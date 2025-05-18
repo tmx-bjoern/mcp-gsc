@@ -1458,7 +1458,8 @@ if __name__ == "__main__":
             except Exception as e:
                 return jsonify({"error": str(e)}), 400
 
-        app.run(host="0.0.0.0", port=3000)
+        port = int(os.environ.get("PORT", 3000))
+        app.run(host="0.0.0.0", port=port)
     else:
         # Lokaler stdio-Modus (z. B. für Claude Desktop)
         mcp.run(transport="stdio")
