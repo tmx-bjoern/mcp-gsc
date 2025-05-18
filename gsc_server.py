@@ -14,8 +14,11 @@ from googleapiclient.errors import HttpError
 from flask import Flask, request, jsonify
 from mcp.server.fastmcp import FastMCP
 
+# Initialisiere MCP und Flask
 mcp = FastMCP("gsc-server")
+app = Flask(__name__)
 
+# Google Search Console Konfiguration
 SCOPES = ["https://www.googleapis.com/auth/webmasters"]
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OAUTH_CLIENT_SECRETS_FILE = os.environ.get("GSC_OAUTH_CLIENT_SECRETS_FILE") or os.path.join(SCRIPT_DIR, "client_secrets.json")
@@ -28,7 +31,7 @@ POSSIBLE_CREDENTIAL_PATHS = [
 ]
 SKIP_OAUTH = os.environ.get("GSC_SKIP_OAUTH", "").lower() in ("true", "1", "yes")
 
-@mcp.command("initialize")
+# MCP Initialisierung für Claude
 def initialize(params=None):
     return {
         "capabilities": {
@@ -40,6 +43,9 @@ def initialize(params=None):
         }
     }
 
+mcp.register("initialize", initialize)
+
+# MCP Standardroute (GET-Test, POST für JSON-RPC)
 @app.route("/", methods=["GET", "POST"])
 def handle_mcp():
     if request.method == "GET":
@@ -50,6 +56,8 @@ def handle_mcp():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# Google Search Console Dienst laden
 
 def get_gsc_service():
     if not SKIP_OAUTH:
@@ -65,6 +73,8 @@ def get_gsc_service():
             except Exception:
                 continue
     raise FileNotFoundError("GSC credentials missing or invalid.")
+
+# OAuth-Authentifizierung
 
 def get_gsc_service_oauth():
     creds = None
@@ -82,10 +92,10 @@ def get_gsc_service_oauth():
                 token.write(creds.to_json())
     return build("searchconsole", "v1", credentials=creds)
 
+# Startlogik für Railway oder lokale Umgebung
 if __name__ == "__main__":
     USE_FLASK = os.getenv("USE_FLASK", "false").lower() == "true"
     if USE_FLASK:
-        app = Flask(__name__)
         port = int(os.environ.get("PORT", 3000))
         app.run(host="0.0.0.0", port=port)
     else:
