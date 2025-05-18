@@ -11,6 +11,28 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+
+# Rest des Codes...
+import sys
+import os
+import pkgutil
+
+# Debugging-Info ausgeben
+print("Python-Pfad:", sys.path, file=sys.stderr)
+print("Installierte Pakete:", file=sys.stderr)
+for pkg in pkgutil.iter_modules():
+    print(f"  - {pkg.name}", file=sys.stderr)
+
+# Versuche zu sehen, was im mcp-Paket verfügbar ist (falls es existiert)
+try:
+    import mcp
+    print("MCP-Paket gefunden!", file=sys.stderr)
+    print("MCP-Paket Inhalt:", dir(mcp), file=sys.stderr)
+except ImportError as e:
+    print(f"MCP-Paket Fehler: {e}", file=sys.stderr)
+
+# Rest des Codes...
+
 # MCP
 from mcp import MCP
 mcp = MCP("gsc-server")
