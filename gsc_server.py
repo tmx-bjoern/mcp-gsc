@@ -26,130 +26,130 @@ class MCP:
             return func
         return decorator
         
-async def handle(self, data):
-    try:
-        # Debug-Ausgabe für eingehende Anfragen
-        print(f"Received MCP request: {json.dumps(data)}", file=sys.stderr)
-        
-        if "method" in data and data["method"] == "initialize":
-            response = {
-                "jsonrpc": "2.0",
-                "id": data.get("id"),
-                "result": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},  # Leeres Objekt, aber erforderlich
-                    "serverInfo": {      # Server-Info ist erforderlich
-                        "name": self.name,
-                        "version": "1.0.0"
-                    }
-                }
-            }
-            print(f"Sending initialize response: {json.dumps(response)}", file=sys.stderr)
-            return response
-        
-        if "method" in data and data["method"] == "getMetadata":
-            tools = []
-            for name, func in self.tools.items():
-                sig = inspect.signature(func)
-                params = {}
-                required = []
-                
-                for param_name, param in sig.parameters.items():
-                    if param_name == "self":
-                        continue
-                        
-                    param_type = "string"
-                    if param.annotation is int:
-                        param_type = "integer"
-                    elif param.annotation is bool:
-                        param_type = "boolean"
-                        
-                    params[param_name] = {"type": param_type}
-                    
-                    if param.default is inspect.Parameter.empty:
-                        required.append(param_name)
-                
-                doc = func.__doc__ or ""
-                tools.append({
-                    "name": name,
-                    "description": doc.strip(),
-                    "parameters": {
-                        "type": "object",
-                        "properties": params,
-                        "required": required
-                    }
-                })
-                
-                # Debug-Ausgabe für jedes registrierte Tool
-                print(f"Registering tool: {name}", file=sys.stderr)
+    async def handle(self, data):
+        try:
+            # Debug-Ausgabe für eingehende Anfragen
+            print(f"Received MCP request: {json.dumps(data)}", file=sys.stderr)
             
-            # Debug-Ausgabe für die Gesamtzahl der Tools
-            print(f"Total tools registered: {len(tools)}", file=sys.stderr)
-            
-            response = {
-                "jsonrpc": "2.0",
-                "id": data.get("id"),
-                "result": {
-                    "tools": tools
-                }
-            }
-            print(f"Sending getMetadata response with {len(tools)} tools", file=sys.stderr)
-            return response
-        
-        if "method" in data and data["method"] == "execute":
-            params = data.get("params", {})
-            tool_name = params.get("name")
-            tool_params = params.get("parameters", {})
-            
-            print(f"Executing tool: {tool_name} with params: {json.dumps(tool_params)}", file=sys.stderr)
-            
-            if tool_name not in self.tools:
-                error_response = {
+            if "method" in data and data["method"] == "initialize":
+                response = {
                     "jsonrpc": "2.0",
                     "id": data.get("id"),
-                    "error": {
-                        "code": -32601,
-                        "message": f"Tool '{tool_name}' not found"
+                    "result": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {},  # Leeres Objekt, aber erforderlich
+                        "serverInfo": {      # Server-Info ist erforderlich
+                            "name": self.name,
+                            "version": "1.0.0"
+                        }
                     }
                 }
-                print(f"Tool not found: {tool_name}", file=sys.stderr)
-                return error_response
+                print(f"Sending initialize response: {json.dumps(response)}", file=sys.stderr)
+                return response
             
-            tool_func = self.tools[tool_name]
-            result = await tool_func(**tool_params)
+            if "method" in data and data["method"] == "getMetadata":
+                tools = []
+                for name, func in self.tools.items():
+                    sig = inspect.signature(func)
+                    params = {}
+                    required = []
+                    
+                    for param_name, param in sig.parameters.items():
+                        if param_name == "self":
+                            continue
+                            
+                        param_type = "string"
+                        if param.annotation is int:
+                            param_type = "integer"
+                        elif param.annotation is bool:
+                            param_type = "boolean"
+                            
+                        params[param_name] = {"type": param_type}
+                        
+                        if param.default is inspect.Parameter.empty:
+                            required.append(param_name)
+                    
+                    doc = func.__doc__ or ""
+                    tools.append({
+                        "name": name,
+                        "description": doc.strip(),
+                        "parameters": {
+                            "type": "object",
+                            "properties": params,
+                            "required": required
+                        }
+                    })
+                    
+                    # Debug-Ausgabe für jedes registrierte Tool
+                    print(f"Registering tool: {name}", file=sys.stderr)
+                
+                # Debug-Ausgabe für die Gesamtzahl der Tools
+                print(f"Total tools registered: {len(tools)}", file=sys.stderr)
+                
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": data.get("id"),
+                    "result": {
+                        "tools": tools
+                    }
+                }
+                print(f"Sending getMetadata response with {len(tools)} tools", file=sys.stderr)
+                return response
             
-            response = {
+            if "method" in data and data["method"] == "execute":
+                params = data.get("params", {})
+                tool_name = params.get("name")
+                tool_params = params.get("parameters", {})
+                
+                print(f"Executing tool: {tool_name} with params: {json.dumps(tool_params)}", file=sys.stderr)
+                
+                if tool_name not in self.tools:
+                    error_response = {
+                        "jsonrpc": "2.0",
+                        "id": data.get("id"),
+                        "error": {
+                            "code": -32601,
+                            "message": f"Tool '{tool_name}' not found"
+                        }
+                    }
+                    print(f"Tool not found: {tool_name}", file=sys.stderr)
+                    return error_response
+                
+                tool_func = self.tools[tool_name]
+                result = await tool_func(**tool_params)
+                
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": data.get("id"),
+                    "result": {
+                        "content": result
+                    }
+                }
+                print(f"Tool execution completed: {tool_name}", file=sys.stderr)
+                return response
+            
+            error_response = {
                 "jsonrpc": "2.0",
                 "id": data.get("id"),
-                "result": {
-                    "content": result
+                "error": {
+                    "code": -32601,
+                    "message": f"Method '{data.get('method')}' not found"
                 }
             }
-            print(f"Tool execution completed: {tool_name}", file=sys.stderr)
-            return response
-        
-        error_response = {
-            "jsonrpc": "2.0",
-            "id": data.get("id"),
-            "error": {
-                "code": -32601,
-                "message": f"Method '{data.get('method')}' not found"
+            print(f"Method not found: {data.get('method')}", file=sys.stderr)
+            return error_response
+            
+        except Exception as e:
+            error_response = {
+                "jsonrpc": "2.0",
+                "id": data.get("id"),
+                "error": {
+                    "code": -32000,
+                    "message": str(e)
+                }
             }
-        }
-        print(f"Method not found: {data.get('method')}", file=sys.stderr)
-        return error_response
-        
-    except Exception as e:
-        error_response = {
-            "jsonrpc": "2.0",
-            "id": data.get("id"),
-            "error": {
-                "code": -32000,
-                "message": str(e)
-            }
-        }
-        print(f"Error handling request: {str(e)}", file=sys.stderr)
-        return error_response
+            print(f"Error handling request: {str(e)}", file=sys.stderr)
+            return error_response
 
 # Erstelle eine MCP-Instanz
 mcp = MCP("gsc-server")
