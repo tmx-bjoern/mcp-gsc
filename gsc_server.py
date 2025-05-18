@@ -1570,7 +1570,6 @@ if __name__ == "__main__":
                 return jsonify({"status": "MCP server is alive"}), 200
             try:
                 data = request.get_json()
-                # Verwende die handle-Methode vom offiziellen MCP-SDK
                 result = asyncio.run(mcp.handle(data))
                 return jsonify(result)
             except Exception as e:
