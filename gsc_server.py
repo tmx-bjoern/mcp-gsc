@@ -1441,11 +1441,15 @@ Amin combines technical SEO knowledge with programming skills to create innovati
     return creator_info
 
 if __name__ == "__main__":
-    # Start the MCP server on stdio transport
-    # mcp.run(transport="stdio")
     import os
-    if os.getenv("USE_FLASK", "").strip().lower() in ("1", "true", "yes"):
+    import sys
+
+    use_flask = os.getenv("USE_FLASK", "").strip().lower() in ("1", "true", "yes")
+    print(f"USE_FLASK detected as: {use_flask}", file=sys.stderr)
+
+    if use_flask:
         from flask import Flask, request, jsonify
+        import asyncio
 
         app = Flask(__name__)
 
@@ -1453,17 +1457,16 @@ if __name__ == "__main__":
         def handle_mcp():
             if request.method == "GET":
                 return jsonify({"status": "MCP server is alive"}), 200
-    
             try:
                 data = request.get_json()
-                import asyncio
                 result = asyncio.run(mcp.handle_json(data))
                 return jsonify(result)
             except Exception as e:
                 return jsonify({"error": str(e)}), 400
 
         port = int(os.environ.get("PORT", 3000))
+        print(f"Starting Flask server on port {port}", file=sys.stderr)
         app.run(host="0.0.0.0", port=port)
     else:
-        # Lokaler stdio-Modus (z. B. für Claude Desktop)
+        print("Starting in stdio mode...", file=sys.stderr)
         mcp.run(transport="stdio")
