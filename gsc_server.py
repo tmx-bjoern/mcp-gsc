@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Optional
 import os
 import json
 from datetime import datetime, timedelta
+import asyncio
+import inspect
 
 import google.auth
 from google.auth.transport.requests import Request
@@ -11,30 +13,117 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+# Eigene einfache MCP-Implementierung
+class MCP:
+    def __init__(self, name):
+        self.name = name
+        self.tools = {}
+    
+    def tool(self):
+        def decorator(func):
+            self.tools[func.__name__] = func
+            return func
+        return decorator
+    
+    async def handle(self, data):
+        try:
+            if "method" in data and data["method"] == "initialize":
+                return {
+                    "jsonrpc": "2.0",
+                    "id": data.get("id"),
+                    "result": {
+                        "protocolVersion": "2024-11-05",
+                        "name": self.name,
+                        "version": "1.0.0"
+                    }
+                }
+            
+            if "method" in data and data["method"] == "getMetadata":
+                tools = []
+                for name, func in self.tools.items():
+                    sig = inspect.signature(func)
+                    params = {}
+                    required = []
+                    
+                    for param_name, param in sig.parameters.items():
+                        if param_name == "self":
+                            continue
+                            
+                        param_type = "string"
+                        if param.annotation is int:
+                            param_type = "integer"
+                        elif param.annotation is bool:
+                            param_type = "boolean"
+                            
+                        params[param_name] = {"type": param_type}
+                        
+                        if param.default is inspect.Parameter.empty:
+                            required.append(param_name)
+                    
+                    doc = func.__doc__ or ""
+                    tools.append({
+                        "name": name,
+                        "description": doc.strip(),
+                        "parameters": {
+                            "type": "object",
+                            "properties": params,
+                            "required": required
+                        }
+                    })
+                
+                return {
+                    "jsonrpc": "2.0",
+                    "id": data.get("id"),
+                    "result": {
+                        "tools": tools
+                    }
+                }
+            
+            if "method" in data and data["method"] == "execute":
+                params = data.get("params", {})
+                tool_name = params.get("name")
+                tool_params = params.get("parameters", {})
+                
+                if tool_name not in self.tools:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": data.get("id"),
+                        "error": {
+                            "code": -32601,
+                            "message": f"Tool '{tool_name}' not found"
+                        }
+                    }
+                
+                tool_func = self.tools[tool_name]
+                result = await tool_func(**tool_params)
+                
+                return {
+                    "jsonrpc": "2.0",
+                    "id": data.get("id"),
+                    "result": {
+                        "content": result
+                    }
+                }
+            
+            return {
+                "jsonrpc": "2.0",
+                "id": data.get("id"),
+                "error": {
+                    "code": -32601,
+                    "message": f"Method '{data.get('method')}' not found"
+                }
+            }
+        except Exception as e:
+            return {
+                "jsonrpc": "2.0",
+                "id": data.get("id"),
+                "error": {
+                    "code": -32000,
+                    "message": str(e)
+                }
+            }
 
-# Rest des Codes...
-import sys
-import os
-import pkgutil
-
-# Debugging-Info ausgeben
-print("Python-Pfad:", sys.path, file=sys.stderr)
-print("Installierte Pakete:", file=sys.stderr)
-for pkg in pkgutil.iter_modules():
-    print(f"  - {pkg.name}", file=sys.stderr)
-
-# Versuche zu sehen, was im mcp-Paket verfügbar ist (falls es existiert)
-try:
-    import mcp
-    print("MCP-Paket gefunden!", file=sys.stderr)
-    print("MCP-Paket Inhalt:", dir(mcp), file=sys.stderr)
-except ImportError as e:
-    print(f"MCP-Paket Fehler: {e}", file=sys.stderr)
-
-# Rest des Codes...
-
-# MCP
-from mcp import MCP
+# Erstelle eine MCP-Instanz
 mcp = MCP("gsc-server")
 
 # Path to your service account JSON or user credentials JSON
