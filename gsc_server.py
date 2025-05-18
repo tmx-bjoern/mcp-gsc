@@ -1449,14 +1449,17 @@ if __name__ == "__main__":
 
         app = Flask(__name__)
 
-        @app.route("/", methods=["POST"])
-        def handle_mcp():
-            try:
-                data = request.get_json()
-                result = mcp.handle_json(data)
-                return jsonify(result)
-            except Exception as e:
-                return jsonify({"error": str(e)}), 400
+    @app.route("/", methods=["GET", "POST"])
+    def handle_mcp():
+    if request.method == "GET":
+        return jsonify({"status": "MCP server is alive"}), 200
+
+    try:
+        data = request.get_json()
+        result = mcp.handle_json(data)
+        return jsonify(result)
+  except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
         port = int(os.environ.get("PORT", 3000))
         app.run(host="0.0.0.0", port=port)
