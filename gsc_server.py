@@ -1442,4 +1442,6 @@ Amin combines technical SEO knowledge with programming skills to create innovati
 
 if __name__ == "__main__":
     # Start the MCP server on stdio transport
-    mcp.run(transport="stdio")
+    # mcp.run(transport="stdio")
+    # Start the MCP server as HTTP server for Railway
+    mcp.run(transport="http")
