@@ -12,7 +12,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # MCP
-from mcp.server.mcp import MCP
+from mcp import MCP
 mcp = MCP("gsc-server")
 
 # Path to your service account JSON or user credentials JSON
