@@ -221,6 +221,11 @@ SKIP_OAUTH = os.environ.get("GSC_SKIP_OAUTH", "").lower() in ("true", "1", "yes"
 
 SCOPES = ["https://www.googleapis.com/auth/webmasters"]
 
+client_secrets_content = os.environ.get("CLIENT_SECRETS_CONTENT")
+if client_secrets_content and OAUTH_CLIENT_SECRETS_FILE:
+    with open(OAUTH_CLIENT_SECRETS_FILE, 'w') as f:
+        f.write(client_secrets_content)
+
 def get_gsc_service():
     """
     Returns an authorized Search Console service object.
