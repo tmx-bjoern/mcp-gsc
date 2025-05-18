@@ -208,6 +208,18 @@ POSSIBLE_CREDENTIAL_PATHS = [
     # Add any other potential paths here
 ]
 
+# Füge diesen Code nach der Definition von POSSIBLE_CREDENTIAL_PATHS hinzu
+service_account_content = os.environ.get("GSC_CREDENTIALS_CONTENT")
+if service_account_content:
+    # Temporäre Datei für Service-Account-Credentials erstellen
+    import tempfile
+    service_account_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+    service_account_file.write(service_account_content)
+    service_account_file.close()
+    
+    # Füge den Pfad zur temporären Datei zu POSSIBLE_CREDENTIAL_PATHS hinzu
+    POSSIBLE_CREDENTIAL_PATHS.insert(0, service_account_file.name)
+
 # OAuth client secrets file path
 OAUTH_CLIENT_SECRETS_FILE = os.environ.get("GSC_OAUTH_CLIENT_SECRETS_FILE")
 if not OAUTH_CLIENT_SECRETS_FILE:
