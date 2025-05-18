@@ -248,6 +248,39 @@ def get_gsc_service():
     Returns an authorized Search Console service object.
     First tries OAuth authentication, then falls back to service account.
     """
+    # Versuche zuerst, den Service Account aus der Umgebungsvariable zu erstellen
+    service_account_content = os.environ.get("GSC_CREDENTIALS_CONTENT")
+    if service_account_content:
+        try:
+            print(f"Using service account from GSC_CREDENTIALS_CONTENT", file=sys.stderr)
+            import tempfile
+            import json
+            
+            # Validiere JSON-Format
+            json_content = json.loads(service_account_content)
+            
+            # Schreibe in temporäre Datei
+            with tempfile.NamedTemporaryFile(delete=False, mode='w') as temp_file:
+                temp_file.write(service_account_content)
+                temp_path = temp_file.name
+            
+            # Erstelle Credentials direkt aus der temporären Datei
+            try:
+                creds = service_account.Credentials.from_service_account_file(
+                    temp_path, scopes=SCOPES
+                )
+                # Lösche die temporäre Datei nach Verwendung
+                os.unlink(temp_path)
+                return build("searchconsole", "v1", credentials=creds)
+            except Exception as e:
+                print(f"Error creating service account: {str(e)}", file=sys.stderr)
+                # Lösche die temporäre Datei im Fehlerfall
+                os.unlink(temp_path)
+                raise e
+        except Exception as e:
+            print(f"Error processing service account content: {str(e)}", file=sys.stderr)
+            # Fahre mit anderen Authentifizierungsmethoden fort
+    
     # Try OAuth authentication first if not skipped
     if not SKIP_OAUTH:
         try:
