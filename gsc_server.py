@@ -1459,12 +1459,8 @@ if __name__ == "__main__":
                 return jsonify({"status": "MCP server is alive"}), 200
             try:
                 data = request.get_json()
-                # Hier ist die Änderung - Überprüfe, welche Methode verfügbar ist
-                if hasattr(mcp, "handle_json"):
-                    result = asyncio.run(mcp.handle_json(data))
-                else:
-                    # Versuche alternative Methoden, die von FastMCP unterstützt werden könnten
-                    result = asyncio.run(mcp.handle(data))
+                # Verwende die handle-Methode vom offiziellen MCP-SDK
+                result = asyncio.run(mcp.handle(data))
                 return jsonify(result)
             except Exception as e:
                 return jsonify({"error": str(e)}), 400
