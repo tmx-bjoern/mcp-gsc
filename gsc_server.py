@@ -209,6 +209,7 @@ POSSIBLE_CREDENTIAL_PATHS = [
 ]
 
 # Füge diesen Code nach der Definition von POSSIBLE_CREDENTIAL_PATHS hinzu
+# Nach der Definition von POSSIBLE_CREDENTIAL_PATHS
 service_account_content = os.environ.get("GSC_CREDENTIALS_CONTENT")
 if service_account_content:
     # Temporäre Datei für Service-Account-Credentials erstellen
@@ -217,6 +218,10 @@ if service_account_content:
     service_account_file.write(service_account_content)
     service_account_file.close()
     
+    # Setze die Umgebungsvariable GSC_CREDENTIALS_PATH
+    os.environ["GSC_CREDENTIALS_PATH"] = service_account_file.name
+    # Aktualisiere auch die Variable im Code
+    GSC_CREDENTIALS_PATH = service_account_file.name
     # Füge den Pfad zur temporären Datei zu POSSIBLE_CREDENTIAL_PATHS hinzu
     POSSIBLE_CREDENTIAL_PATHS.insert(0, service_account_file.name)
 
