@@ -24,7 +24,7 @@ class MCP:
             self.tools[func.__name__] = func
             return func
         return decorator
-    
+        
     async def handle(self, data):
         try:
             if "method" in data and data["method"] == "initialize":
@@ -33,10 +33,14 @@ class MCP:
                     "id": data.get("id"),
                     "result": {
                         "protocolVersion": "2024-11-05",
-                        "name": self.name,
-                        "version": "1.0.0"
+                        "capabilities": {},  # Leeres Objekt, aber es muss vorhanden sein
+                        "serverInfo": {      # Server-Info muss vorhanden sein
+                            "name": self.name,
+                            "version": "1.0.0"
+                        }
                     }
                 }
+        
             
             if "method" in data and data["method"] == "getMetadata":
                 tools = []
