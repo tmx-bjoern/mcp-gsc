@@ -25,63 +25,81 @@ class MCP:
             return func
         return decorator
         
-    async def handle(self, data):
-        try:
-            if "method" in data and data["method"] == "initialize":
-                return {
-                    "jsonrpc": "2.0",
-                    "id": data.get("id"),
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {},  # Leeres Objekt, aber es muss vorhanden sein
-                        "serverInfo": {      # Server-Info muss vorhanden sein
-                            "name": self.name,
-                            "version": "1.0.0"
-                        }
+async def handle(self, data):
+    try:
+        if "method" in data and data["method"] == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": data.get("id"),
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "serverInfo": {
+                        "name": self.name,
+                        "version": "1.0.0"
                     }
                 }
+            }
         
-            
-            if "method" in data and data["method"] == "getMetadata":
-                tools = []
-                for name, func in self.tools.items():
-                    sig = inspect.signature(func)
-                    params = {}
-                    required = []
+        if "method" in data and data["method"] == "getMetadata":
+            tools = []
+            for name, func in self.tools.items():
+                sig = inspect.signature(func)
+                params = {}
+                required = []
+                
+                for param_name, param in sig.parameters.items():
+                    # Überspringe self-Parameter
+                    if param_name == "self":
+                        continue
                     
-                    for param_name, param in sig.parameters.items():
-                        if param_name == "self":
-                            continue
-                            
-                        param_type = "string"
+                    # Standard-Typ ist string
+                    param_type = "string"
+                    
+                    # Bestimme den Typ basierend auf der Annotation, falls vorhanden
+                    if param.annotation is not inspect.Parameter.empty:
                         if param.annotation is int:
                             param_type = "integer"
                         elif param.annotation is bool:
                             param_type = "boolean"
-                            
-                        params[param_name] = {"type": param_type}
-                        
-                        if param.default is inspect.Parameter.empty:
-                            required.append(param_name)
                     
-                    doc = func.__doc__ or ""
-                    tools.append({
-                        "name": name,
-                        "description": doc.strip(),
-                        "parameters": {
-                            "type": "object",
-                            "properties": params,
-                            "required": required
-                        }
-                    })
-                
-                return {
-                    "jsonrpc": "2.0",
-                    "id": data.get("id"),
-                    "result": {
-                        "tools": tools
+                    # Parameter definieren
+                    params[param_name] = {
+                        "type": param_type,
+                        "description": f"Parameter {param_name} for {name}"
                     }
+                    
+                    # Wenn kein Standardwert, ist der Parameter erforderlich
+                    if param.default is inspect.Parameter.empty:
+                        required.append(param_name)
+                
+                # Extrahiere Dokumentation
+                doc = func.__doc__ or ""
+                
+                # Füge das Tool zur Liste hinzu
+                tools.append({
+                    "name": name,
+                    "description": doc.strip(),
+                    "parameters": {
+                        "type": "object",
+                        "properties": params,
+                        "required": required
+                    }
+                })
+                
+                # Debug-Ausgabe hinzufügen
+                print(f"Registering tool: {name}", file=sys.stderr)
+            
+            # Debug-Ausgabe hinzufügen
+            print(f"Total tools registered: {len(tools)}", file=sys.stderr)
+            
+            return {
+                "jsonrpc": "2.0",
+                "id": data.get("id"),
+                "result": {
+                    "tools": tools
                 }
+            }
             
             if "method" in data and data["method"] == "execute":
                 params = data.get("params", {})
@@ -1574,11 +1592,18 @@ if __name__ == "__main__":
                 return jsonify({"status": "MCP server is alive"}), 200
             try:
                 data = request.get_json()
+                # Debug-Ausgabe hinzufügen
+                print(f"Received request: {json.dumps(data)}", file=sys.stderr)
+                
                 result = asyncio.run(mcp.handle(data))
+                
+                # Debug-Ausgabe hinzufügen
+                print(f"Sending response: {json.dumps(result)}", file=sys.stderr)
+                
                 return jsonify(result)
             except Exception as e:
+                print(f"Error handling request: {str(e)}", file=sys.stderr)
                 return jsonify({"error": str(e)}), 400
-
         port = int(os.environ.get("PORT", 3000))
         print(f"Starting Flask server on port {port}", file=sys.stderr)
         app.run(host="0.0.0.0", port=port)
