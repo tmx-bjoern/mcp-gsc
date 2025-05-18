@@ -18,10 +18,11 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Startskript schreiben: client_secrets.json erzeugen + App starten
-RUN echo '#!/bin/sh\n' \
-         'echo \"$CLIENT_SECRETS_CONTENT\" > /app/client_secrets.json\n' \
-         'exec python gsc_server.py' \
-         > /app/start.sh && chmod +x /app/start.sh
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'echo "$CLIENT_SECRETS_CONTENT" > /app/client_secrets.json' >> /app/start.sh && \
+    echo 'exec python gsc_server.py' >> /app/start.sh && \
+    chmod +x /app/start.sh
+
 
 # Startkommando setzen
 CMD ["sh", "/app/start.sh"]
