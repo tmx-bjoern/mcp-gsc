@@ -1443,5 +1443,22 @@ Amin combines technical SEO knowledge with programming skills to create innovati
 if __name__ == "__main__":
     # Start the MCP server on stdio transport
     # mcp.run(transport="stdio")
-    # Start the MCP server as HTTP server for Railway
-    mcp.run(transport="http")
+    import os
+    if os.getenv("USE_FLASK", "false") == "true":
+        from flask import Flask, request, jsonify
+
+        app = Flask(__name__)
+
+        @app.route("/", methods=["POST"])
+        def handle_mcp():
+            try:
+                data = request.get_json()
+                result = mcp.handle_json(data)
+                return jsonify(result)
+            except Exception as e:
+                return jsonify({"error": str(e)}), 400
+
+        app.run(host="0.0.0.0", port=3000)
+    else:
+        # Lokaler stdio-Modus (z. B. für Claude Desktop)
+        mcp.run(transport="stdio")
