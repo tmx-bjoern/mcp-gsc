@@ -46,6 +46,48 @@ class MCP:
                 }
                 print(f"Sending initialize response: {json.dumps(response)}", file=sys.stderr)
                 return response
+
+            # Handle 'tools/list' - Umleitung zu getMetadata
+            if "method" in data and data["method"] == "tools/list":
+                tools_response = {
+                    "jsonrpc": "2.0",
+                    "id": data.get("id"),
+                    "result": {
+                        "tools": []
+                    }
+                }
+                
+                # Hole alle Tools von getMetadata
+                metadata_response = await self.handle({
+                    "jsonrpc": "2.0",
+                    "id": "internal",
+                    "method": "getMetadata"
+                })
+                
+                if "result" in metadata_response and "tools" in metadata_response["result"]:
+                    tools_response["result"]["tools"] = metadata_response["result"]["tools"]
+                
+                return tools_response
+            
+            # Handle 'resources/list' - Leere Liste zurückgeben
+            if "method" in data and data["method"] == "resources/list":
+                return {
+                    "jsonrpc": "2.0",
+                    "id": data.get("id"),
+                    "result": {
+                        "resources": []
+                    }
+                }
+            
+            # Handle 'prompts/list' - Leere Liste zurückgeben
+            if "method" in data and data["method"] == "prompts/list":
+                return {
+                    "jsonrpc": "2.0",
+                    "id": data.get("id"),
+                    "result": {
+                        "prompts": []
+                    }
+                }
             
             if "method" in data and data["method"] == "getMetadata":
                 tools = []
