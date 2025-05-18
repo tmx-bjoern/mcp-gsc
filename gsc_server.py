@@ -1458,8 +1458,9 @@ if __name__ == "__main__":
         data = request.get_json()
         result = mcp.handle_json(data)
         return jsonify(result)
-  except Exception as e:
+    except Exception as e:
         return jsonify({"error": str(e)}), 400
+
 
         port = int(os.environ.get("PORT", 3000))
         app.run(host="0.0.0.0", port=port)
