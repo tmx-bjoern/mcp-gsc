@@ -4,7 +4,6 @@ google-auth>=2.0.0
 google-auth-oauthlib>=1.2.1
 mcp>=1.6.0
 flask
-git+https://github.com/AminForou/mcp-gsc.git@main#subdirectory=fastmcp
 
 
 
