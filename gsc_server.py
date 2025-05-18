@@ -12,9 +12,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # MCP
-from mcp.server.fastmcp import FastMCP
-
-mcp = FastMCP("gsc-server")
+from mcp.server.mcp import MCP
+mcp = MCP("gsc-server")
 
 # Path to your service account JSON or user credentials JSON
 # First check if GSC_CREDENTIALS_PATH environment variable is set
