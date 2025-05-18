@@ -1444,7 +1444,7 @@ if __name__ == "__main__":
     # Start the MCP server on stdio transport
     # mcp.run(transport="stdio")
     import os
-    if os.getenv("USE_FLASK", "false") == "true":
+    if os.getenv("USE_FLASK", "").strip().lower() in ("1", "true", "yes"):
         from flask import Flask, request, jsonify
 
         app = Flask(__name__)
