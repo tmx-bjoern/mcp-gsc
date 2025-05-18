@@ -4,6 +4,8 @@ google-auth>=2.0.0
 google-auth-oauthlib>=1.2.1
 mcp>=1.6.0
 flask
+mcp @ git+https://github.com/modelcontextprotocol/python-sdk.git
+
 
 
 
