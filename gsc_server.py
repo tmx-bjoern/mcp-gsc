@@ -1456,7 +1456,8 @@ if __name__ == "__main__":
     
             try:
                 data = request.get_json()
-                result = mcp.handle_json(data)
+                import asyncio
+                result = asyncio.run(mcp.handle_json(data))
                 return jsonify(result)
             except Exception as e:
                 return jsonify({"error": str(e)}), 400
