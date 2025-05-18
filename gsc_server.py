@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timedelta
 import asyncio
 import inspect
+import sys
 
 import google.auth
 from google.auth.transport.requests import Request
@@ -27,19 +28,24 @@ class MCP:
         
 async def handle(self, data):
     try:
+        # Debug-Ausgabe für eingehende Anfragen
+        print(f"Received MCP request: {json.dumps(data)}", file=sys.stderr)
+        
         if "method" in data and data["method"] == "initialize":
-            return {
+            response = {
                 "jsonrpc": "2.0",
                 "id": data.get("id"),
                 "result": {
                     "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "serverInfo": {
+                    "capabilities": {},  # Leeres Objekt, aber erforderlich
+                    "serverInfo": {      # Server-Info ist erforderlich
                         "name": self.name,
                         "version": "1.0.0"
                     }
                 }
             }
+            print(f"Sending initialize response: {json.dumps(response)}", file=sys.stderr)
+            return response
         
         if "method" in data and data["method"] == "getMetadata":
             tools = []
@@ -49,34 +55,21 @@ async def handle(self, data):
                 required = []
                 
                 for param_name, param in sig.parameters.items():
-                    # Überspringe self-Parameter
                     if param_name == "self":
                         continue
-                    
-                    # Standard-Typ ist string
+                        
                     param_type = "string"
+                    if param.annotation is int:
+                        param_type = "integer"
+                    elif param.annotation is bool:
+                        param_type = "boolean"
+                        
+                    params[param_name] = {"type": param_type}
                     
-                    # Bestimme den Typ basierend auf der Annotation, falls vorhanden
-                    if param.annotation is not inspect.Parameter.empty:
-                        if param.annotation is int:
-                            param_type = "integer"
-                        elif param.annotation is bool:
-                            param_type = "boolean"
-                    
-                    # Parameter definieren
-                    params[param_name] = {
-                        "type": param_type,
-                        "description": f"Parameter {param_name} for {name}"
-                    }
-                    
-                    # Wenn kein Standardwert, ist der Parameter erforderlich
                     if param.default is inspect.Parameter.empty:
                         required.append(param_name)
                 
-                # Extrahiere Dokumentation
                 doc = func.__doc__ or ""
-                
-                # Füge das Tool zur Liste hinzu
                 tools.append({
                     "name": name,
                     "description": doc.strip(),
@@ -87,63 +80,76 @@ async def handle(self, data):
                     }
                 })
                 
-                # Debug-Ausgabe hinzufügen
+                # Debug-Ausgabe für jedes registrierte Tool
                 print(f"Registering tool: {name}", file=sys.stderr)
             
-            # Debug-Ausgabe hinzufügen
+            # Debug-Ausgabe für die Gesamtzahl der Tools
             print(f"Total tools registered: {len(tools)}", file=sys.stderr)
             
-            return {
+            response = {
                 "jsonrpc": "2.0",
                 "id": data.get("id"),
                 "result": {
                     "tools": tools
                 }
             }
+            print(f"Sending getMetadata response with {len(tools)} tools", file=sys.stderr)
+            return response
+        
+        if "method" in data and data["method"] == "execute":
+            params = data.get("params", {})
+            tool_name = params.get("name")
+            tool_params = params.get("parameters", {})
             
-            if "method" in data and data["method"] == "execute":
-                params = data.get("params", {})
-                tool_name = params.get("name")
-                tool_params = params.get("parameters", {})
-                
-                if tool_name not in self.tools:
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": data.get("id"),
-                        "error": {
-                            "code": -32601,
-                            "message": f"Tool '{tool_name}' not found"
-                        }
-                    }
-                
-                tool_func = self.tools[tool_name]
-                result = await tool_func(**tool_params)
-                
-                return {
+            print(f"Executing tool: {tool_name} with params: {json.dumps(tool_params)}", file=sys.stderr)
+            
+            if tool_name not in self.tools:
+                error_response = {
                     "jsonrpc": "2.0",
                     "id": data.get("id"),
-                    "result": {
-                        "content": result
+                    "error": {
+                        "code": -32601,
+                        "message": f"Tool '{tool_name}' not found"
                     }
                 }
+                print(f"Tool not found: {tool_name}", file=sys.stderr)
+                return error_response
             
-            return {
+            tool_func = self.tools[tool_name]
+            result = await tool_func(**tool_params)
+            
+            response = {
                 "jsonrpc": "2.0",
                 "id": data.get("id"),
-                "error": {
-                    "code": -32601,
-                    "message": f"Method '{data.get('method')}' not found"
+                "result": {
+                    "content": result
                 }
             }
-        except Exception as e:
-            return {
-                "jsonrpc": "2.0",
-                "id": data.get("id"),
-                "error": {
-                    "code": -32000,
-                    "message": str(e)
-                }
+            print(f"Tool execution completed: {tool_name}", file=sys.stderr)
+            return response
+        
+        error_response = {
+            "jsonrpc": "2.0",
+            "id": data.get("id"),
+            "error": {
+                "code": -32601,
+                "message": f"Method '{data.get('method')}' not found"
             }
+        }
+        print(f"Method not found: {data.get('method')}", file=sys.stderr)
+        return error_response
+        
+    except Exception as e:
+        error_response = {
+            "jsonrpc": "2.0",
+            "id": data.get("id"),
+            "error": {
+                "code": -32000,
+                "message": str(e)
+            }
+        }
+        print(f"Error handling request: {str(e)}", file=sys.stderr)
+        return error_response
 
 # Erstelle eine MCP-Instanz
 mcp = MCP("gsc-server")
@@ -1604,6 +1610,8 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"Error handling request: {str(e)}", file=sys.stderr)
                 return jsonify({"error": str(e)}), 400
+
+        
         port = int(os.environ.get("PORT", 3000))
         print(f"Starting Flask server on port {port}", file=sys.stderr)
         app.run(host="0.0.0.0", port=port)
