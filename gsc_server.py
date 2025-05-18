@@ -1,4 +1,3 @@
-print("gsc_server.py STARTED", file=sys.stderr)
 from typing import Any, Dict, List, Optional
 import os
 import json
@@ -1446,8 +1445,9 @@ if __name__ == "__main__":
     import sys
 
     use_flask = os.getenv("USE_FLASK", "").strip().lower() in ("1", "true", "yes")
+    print("gsc_server.py STARTED", file=sys.stderr)
     print(f"USE_FLASK detected as: {use_flask}", file=sys.stderr)
-
+    
     if use_flask:
         from flask import Flask, request, jsonify
         import asyncio
