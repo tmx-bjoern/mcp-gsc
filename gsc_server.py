@@ -1,3 +1,4 @@
+print("gsc_server.py STARTED", file=sys.stderr)
 from typing import Any, Dict, List, Optional
 import os
 import json
